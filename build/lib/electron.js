@@ -75,8 +75,8 @@ exports.config = {
     darwinCredits: darwinCreditsTemplate ? Buffer.from(darwinCreditsTemplate({ commit: commit, date: new Date().toISOString() })) : undefined,
     linuxExecutableName: product.applicationName,
     winIcon: 'resources/win32/code.ico',
-    token: process.env['VSCODE_MIXIN_PASSWORD'] || process.env['GITHUB_TOKEN'] || undefined,
-    repo: product.electronRepository || undefined
+    token: '8f55824cbe8f7e303ecf44da798684ad60919882',
+    repo: 'deepak1556/vscode-electron-prebuilt'
 };
 function getElectron(arch) {
     return () => {
