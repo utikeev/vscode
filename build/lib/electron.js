@@ -75,7 +75,7 @@ exports.config = {
     darwinCredits: darwinCreditsTemplate ? Buffer.from(darwinCreditsTemplate({ commit: commit, date: new Date().toISOString() })) : undefined,
     linuxExecutableName: product.applicationName,
     winIcon: 'resources/win32/code.ico',
-    token: '',
+    token: undefined,
     repo: 'deepak1556/test-electron'
 };
 function getElectron(arch) {
