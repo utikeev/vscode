@@ -31,3 +31,10 @@ coverage/
 test_data/
 test-results/
 yarn-error.log
+
+
+.idea/libraries
+.idea/misc.xml
+.idea/modules.xml
+.idea/vcs.xml
+.idea/vscode.iml
