@@ -629,8 +629,12 @@ const SuggestCommand = EditorCommand.bindToContribution<SuggestController>(Sugge
 registerEditorCommand(new SuggestCommand({
 	id: 'acceptSelectedSuggestion',
 	precondition: SuggestContext.Visible,
-	handler(x) {
-		x.acceptSelectedSuggestion(true, false);
+	handler(x, args) {
+		let charCode = 0;
+		if (typeof args === 'object' && typeof args.commitChar === 'string') {
+			charCode = args.commitChar.charCodeAt(0);
+		}
+		x.acceptSelectedSuggestion(true, false, charCode);
 	}
 }));
 
@@ -639,7 +643,8 @@ KeybindingsRegistry.registerKeybindingRule({
 	id: 'acceptSelectedSuggestion',
 	when: ContextKeyExpr.and(SuggestContext.Visible, EditorContextKeys.textInputFocus),
 	primary: KeyCode.Tab,
-	weight
+	weight,
+	args: { commitChar: '\t' }
 });
 
 // accept on enter has special rules
@@ -648,6 +653,7 @@ KeybindingsRegistry.registerKeybindingRule({
 	when: ContextKeyExpr.and(SuggestContext.Visible, EditorContextKeys.textInputFocus, SuggestContext.AcceptSuggestionsOnEnter, SuggestContext.MakesTextEdit),
 	primary: KeyCode.Enter,
 	weight,
+	args: { commitChar: '\n' }
 });
 
 MenuRegistry.appendMenuItem(suggestWidgetStatusbarMenu, {
