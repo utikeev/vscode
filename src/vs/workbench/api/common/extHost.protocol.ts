@@ -1133,7 +1133,7 @@ export interface ISuggestDataDto {
 	[ISuggestDataDtoField.insertText]?: string;
 	[ISuggestDataDtoField.insertTextRules]?: modes.CompletionItemInsertTextRule;
 	[ISuggestDataDtoField.range]?: IRange | { insert: IRange, replace: IRange; };
-	[ISuggestDataDtoField.commitCharacters]?: string[];
+	[ISuggestDataDtoField.commitCharacters]?: string[] | { char: string, commitWithoutInsert?: boolean }[];
 	[ISuggestDataDtoField.additionalTextEdits]?: ISingleEditOperation[];
 	[ISuggestDataDtoField.command]?: modes.Command;
 	[ISuggestDataDtoField.kindModifier]?: modes.CompletionItemTag[];
