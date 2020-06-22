@@ -337,6 +337,14 @@ export interface IEditorAriaOptions {
 }
 
 /**
+ * An event which emitted before type, which supports cancelling type itself.
+ * @internal
+ */
+export interface IEditorWillTypeEvent {
+	readonly text: string
+	cancelType: boolean
+}
+/**
  * A rich code editor.
  */
 export interface ICodeEditor extends editorCommon.IEditor {
@@ -415,7 +423,7 @@ export interface ICodeEditor extends editorCommon.IEditor {
 	 * @event
 	 * @internal
 	 */
-	onWillType(listener: (text: string) => void): IDisposable;
+	onWillType(listener: (e: IEditorWillTypeEvent) => void): IDisposable;
 	/**
 	 * An event emitted after interpreting typed characters (on the keyboard).
 	 * @event
