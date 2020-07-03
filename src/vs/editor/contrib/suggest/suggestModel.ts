@@ -7,21 +7,35 @@ import { isNonEmptyArray } from 'vs/base/common/arrays';
 import { TimeoutTimer } from 'vs/base/common/async';
 import { onUnexpectedError } from 'vs/base/common/errors';
 import { Emitter, Event } from 'vs/base/common/event';
-import { IDisposable, dispose, DisposableStore } from 'vs/base/common/lifecycle';
+import { DisposableStore, dispose, IDisposable } from 'vs/base/common/lifecycle';
 import { ICodeEditor } from 'vs/editor/browser/editorBrowser';
 import { CursorChangeReason, ICursorSelectionChangedEvent } from 'vs/editor/common/controller/cursorEvents';
-import { Position, IPosition } from 'vs/editor/common/core/position';
+import { IPosition, Position } from 'vs/editor/common/core/position';
 import { Selection } from 'vs/editor/common/core/selection';
 import { ITextModel, IWordAtPosition } from 'vs/editor/common/model';
-import { CompletionItemProvider, StandardTokenType, CompletionContext, CompletionProviderRegistry, CompletionTriggerKind, CompletionItemKind } from 'vs/editor/common/modes';
+import {
+	CompletionContext,
+	CompletionItemKind,
+	CompletionItemProvider,
+	CompletionProviderRegistry,
+	CompletionTriggerKind,
+	StandardTokenType
+} from 'vs/editor/common/modes';
 import { CompletionModel } from './completionModel';
-import { CompletionItem, getSuggestionComparator, provideSuggestionItems, getSnippetSuggestSupport, SnippetSortOrder, CompletionOptions } from './suggest';
+import {
+	CompletionItem,
+	CompletionOptions,
+	getSnippetSuggestSupport,
+	getSuggestionComparator,
+	provideSuggestionItems,
+	SnippetSortOrder
+} from './suggest';
 import { SnippetController2 } from 'vs/editor/contrib/snippet/snippetController2';
 import { CancellationTokenSource } from 'vs/base/common/cancellation';
 import { IEditorWorkerService } from 'vs/editor/common/services/editorWorkerService';
 import { WordDistance } from 'vs/editor/contrib/suggest/wordDistance';
 import { EditorOption } from 'vs/editor/common/config/editorOptions';
-import { isLowSurrogate, isHighSurrogate } from 'vs/base/common/strings';
+import { isHighSurrogate, isLowSurrogate } from 'vs/base/common/strings';
 import { IClipboardService } from 'vs/platform/clipboard/common/clipboardService';
 
 export interface ICancelEvent {
@@ -45,6 +59,7 @@ export interface SuggestTriggerContext {
 	readonly auto: boolean;
 	readonly shy: boolean;
 	readonly triggerCharacter?: string;
+	readonly updateSuggestions?: boolean;
 }
 
 export class LineContext {
@@ -401,6 +416,8 @@ export class SuggestModel implements IDisposable {
 			};
 		} else if (onlyFrom && onlyFrom.size > 0) {
 			suggestCtx = { triggerKind: CompletionTriggerKind.TriggerForIncompleteCompletions };
+		} else if (context.updateSuggestions) {
+			suggestCtx = { triggerKind: CompletionTriggerKind.UpdateSuggestions };
 		} else {
 			suggestCtx = { triggerKind: CompletionTriggerKind.Invoke };
 		}
