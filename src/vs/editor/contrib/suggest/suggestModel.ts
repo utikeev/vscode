@@ -408,19 +408,24 @@ export class SuggestModel implements IDisposable {
 		this._context = ctx;
 
 		// Build context for request
-		let suggestCtx: CompletionContext;
+		let triggerKind: CompletionTriggerKind;
+
 		if (context.triggerCharacter) {
-			suggestCtx = {
-				triggerKind: CompletionTriggerKind.TriggerCharacter,
-				triggerCharacter: context.triggerCharacter
-			};
+			triggerKind = CompletionTriggerKind.TriggerCharacter;
 		} else if (onlyFrom && onlyFrom.size > 0) {
-			suggestCtx = { triggerKind: CompletionTriggerKind.TriggerForIncompleteCompletions };
+			triggerKind = CompletionTriggerKind.TriggerForIncompleteCompletions;
 		} else if (context.updateSuggestions) {
-			suggestCtx = { triggerKind: CompletionTriggerKind.UpdateSuggestions };
+			triggerKind = CompletionTriggerKind.UpdateSuggestions;
 		} else {
-			suggestCtx = { triggerKind: CompletionTriggerKind.Invoke };
+			triggerKind = CompletionTriggerKind.Invoke;
 		}
+
+		const suggestCtx: CompletionContext = {
+			triggerKind: triggerKind,
+			triggerCharacter: context.triggerCharacter,
+			auto: context.auto
+		};
+		suggestCtx.auto = context.auto;
 
 		this._requestToken = new CancellationTokenSource();
 
