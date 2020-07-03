@@ -1327,6 +1327,7 @@ export enum CompletionTriggerKind {
 export interface CompletionContext {
 	readonly triggerKind: CompletionTriggerKind;
 	readonly triggerCharacter?: string;
+	readonly auto: boolean;
 }
 
 export enum CompletionItemKind {
