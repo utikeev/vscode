@@ -15,6 +15,7 @@ import { CancellationToken } from 'vs/base/common/cancellation';
 export const Context = {
 	Visible: new RawContextKey<boolean>('parameterHintsVisible', false),
 	MultipleSignatures: new RawContextKey<boolean>('parameterHintsMultipleSignatures', false),
+	ShowMultipleSignaturesAsList: new RawContextKey<boolean>('parameterHintsShowMultipleSignaturesAsList', false)
 };
 
 export function provideSignatureHelp(
