@@ -40,7 +40,7 @@ suite('SnippetsService', function () {
 
 	let modeService: ModeServiceImpl;
 	let snippetService: ISnippetsService;
-	let context: CompletionContext = { triggerKind: CompletionTriggerKind.Invoke };
+	let context: CompletionContext = { triggerKind: CompletionTriggerKind.Invoke, auto: false };
 
 	setup(function () {
 		modeService = new ModeServiceImpl();
