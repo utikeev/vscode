@@ -19,11 +19,17 @@ import { Context } from 'vs/editor/contrib/parameterHints/provideSignatureHelp';
 import * as nls from 'vs/nls';
 import { IContextKey, IContextKeyService } from 'vs/platform/contextkey/common/contextkey';
 import { IOpenerService } from 'vs/platform/opener/common/opener';
-import { editorHoverBackground, editorHoverBorder, textCodeBlockBackground, textLinkForeground, editorHoverForeground } from 'vs/platform/theme/common/colorRegistry';
+import {
+	editorHoverBackground,
+	editorHoverBorder,
+	editorHoverForeground,
+	textCodeBlockBackground,
+	textLinkForeground
+} from 'vs/platform/theme/common/colorRegistry';
 import { HIGH_CONTRAST, registerThemingParticipant } from 'vs/platform/theme/common/themeService';
 import { ParameterHintsModel, TriggerContext } from 'vs/editor/contrib/parameterHints/parameterHintsModel';
 import { pad } from 'vs/base/common/strings';
-import { registerIcon, Codicon } from 'vs/base/common/codicons';
+import { Codicon, registerIcon } from 'vs/base/common/codicons';
 import { assertIsDefined } from 'vs/base/common/types';
 
 const $ = dom.$;
@@ -40,7 +46,6 @@ export class ParameterHintsWidget extends Disposable implements IContentWidget {
 	private readonly model: ParameterHintsModel;
 	private readonly keyVisible: IContextKey<boolean>;
 	private readonly keyMultipleSignatures: IContextKey<boolean>;
-	private readonly keyShowMultipleSignaturesAsList: IContextKey<boolean>;
 
 	private domNodes?: {
 		readonly element: HTMLElement;
@@ -67,12 +72,11 @@ export class ParameterHintsWidget extends Disposable implements IContentWidget {
 		this.model = this._register(new ParameterHintsModel(editor));
 		this.keyVisible = Context.Visible.bindTo(contextKeyService);
 		this.keyMultipleSignatures = Context.MultipleSignatures.bindTo(contextKeyService);
-		this.keyShowMultipleSignaturesAsList = Context.ShowMultipleSignaturesAsList.bindTo(contextKeyService);
 
 		this._register(this.model.onChangedHints(newParameterHints => {
 			if (newParameterHints) {
 				this.show();
-				if (this.keyShowMultipleSignaturesAsList.get()) {
+				if (this.editor.getOption(EditorOption.showMultipleSignaturesAsList)) {
 					this.renderAsList(newParameterHints);
 				} else {
 					this.render(newParameterHints);
@@ -104,7 +108,7 @@ export class ParameterHintsWidget extends Disposable implements IContentWidget {
 		this._register(scrollbar);
 		wrapper.appendChild(scrollbar.getDomNode());
 
-		const signatureClass = this.keyShowMultipleSignaturesAsList.get() ? '.signature.signature-list' : '.signature';
+		const signatureClass = this.editor.getOption(EditorOption.showMultipleSignaturesAsList) ? '.signature.signature-list' : '.signature';
 		const signature = dom.append(body, $(signatureClass));
 
 		const docs = dom.append(body, $('.docs'));
