@@ -12,6 +12,7 @@ export interface IMarkdownString {
 	readonly isTrusted?: boolean;
 	readonly supportThemeIcons?: boolean;
 	uris?: { [href: string]: UriComponents };
+	readonly sanitized?: boolean;
 }
 
 export class MarkdownString implements IMarkdownString {

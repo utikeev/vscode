@@ -199,7 +199,7 @@ export function renderMarkdown(markdown: IMarkdownString, options: MarkdownRende
 		const match = markdown.isTrusted ? html.match(/^(<span[^<]+>)|(<\/\s*span>)$/) : undefined;
 		return match ? html : '';
 	};
-	markedOptions.sanitize = true;
+	markedOptions.sanitize = !markdown.sanitized;
 	markedOptions.renderer = renderer;
 
 	const allowedSchemes = [Schemas.http, Schemas.https, Schemas.mailto, Schemas.data, Schemas.file, Schemas.vscodeRemote, Schemas.vscodeRemoteResource];
