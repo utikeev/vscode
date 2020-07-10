@@ -7,13 +7,22 @@ import * as nls from 'vs/nls';
 import * as dom from 'vs/base/browser/dom';
 import { CancellationToken } from 'vs/base/common/cancellation';
 import { Color, RGBA } from 'vs/base/common/color';
-import { IMarkdownString, MarkdownString, isEmptyMarkdownString, markedStringsEquals } from 'vs/base/common/htmlContent';
-import { IDisposable, toDisposable, DisposableStore, combinedDisposable, MutableDisposable } from 'vs/base/common/lifecycle';
+import { IMarkdownString, isEmptyMarkdownString, MarkdownString, markedStringsEquals } from 'vs/base/common/htmlContent';
+import { combinedDisposable, DisposableStore, IDisposable, MutableDisposable, toDisposable } from 'vs/base/common/lifecycle';
 import { ICodeEditor } from 'vs/editor/browser/editorBrowser';
 import { Position } from 'vs/editor/common/core/position';
 import { IRange, Range } from 'vs/editor/common/core/range';
 import { ModelDecorationOptions } from 'vs/editor/common/model/textModel';
-import { DocumentColorProvider, Hover as MarkdownHover, HoverProviderRegistry, IColor, TokenizationRegistry, CodeActionTriggerType } from 'vs/editor/common/modes';
+import {
+	CodeActionTriggerType,
+	DocumentColorProvider,
+	Hover as MarkdownHover,
+	HoverContext,
+	HoverProviderRegistry,
+	HoverSource,
+	IColor,
+	TokenizationRegistry
+} from 'vs/editor/common/modes';
 import { getColorPresentations } from 'vs/editor/contrib/colorPicker/color';
 import { ColorDetector } from 'vs/editor/contrib/colorPicker/colorDetector';
 import { ColorPickerModel } from 'vs/editor/contrib/colorPicker/colorPickerModel';
@@ -23,7 +32,7 @@ import { HoverOperation, HoverStartMode, IHoverComputer } from 'vs/editor/contri
 import { ContentHoverWidget } from 'vs/editor/contrib/hover/hoverWidgets';
 import { MarkdownRenderer } from 'vs/editor/contrib/markdown/markdownRenderer';
 import { IThemeService, registerThemingParticipant } from 'vs/platform/theme/common/themeService';
-import { coalesce, isNonEmptyArray, asArray } from 'vs/base/common/arrays';
+import { asArray, coalesce, isNonEmptyArray } from 'vs/base/common/arrays';
 import { IMarker, IMarkerData, MarkerSeverity } from 'vs/platform/markers/common/markers';
 import { basename } from 'vs/base/common/resources';
 import { IMarkerDecorationsService } from 'vs/editor/common/services/markersDecorationService';
@@ -32,7 +41,7 @@ import { IOpenerService, NullOpenerService } from 'vs/platform/opener/common/ope
 import { MarkerController, NextMarkerAction } from 'vs/editor/contrib/gotoError/gotoError';
 import { IKeybindingService } from 'vs/platform/keybinding/common/keybinding';
 import { CancelablePromise, createCancelablePromise } from 'vs/base/common/async';
-import { getCodeActions, CodeActionSet } from 'vs/editor/contrib/codeAction/codeAction';
+import { CodeActionSet, getCodeActions } from 'vs/editor/contrib/codeAction/codeAction';
 import { QuickFixAction, QuickFixController } from 'vs/editor/contrib/codeAction/codeActionCommands';
 import { CodeActionKind, CodeActionTrigger } from 'vs/editor/contrib/codeAction/types';
 import { IModeService } from 'vs/editor/common/services/modeService';
@@ -42,6 +51,7 @@ import { Constants } from 'vs/base/common/uint';
 import { textLinkForeground } from 'vs/platform/theme/common/colorRegistry';
 import { Progress } from 'vs/platform/progress/common/progress';
 import { IContextKey } from 'vs/platform/contextkey/common/contextkey';
+import { KeyMod } from 'vs/base/common/keyCodes';
 
 const $ = dom.$;
 
@@ -69,6 +79,7 @@ class ModesContentComputer implements IHoverComputer<HoverPart[]> {
 	private readonly _editor: ICodeEditor;
 	private _result: HoverPart[];
 	private _range?: Range;
+	private _context?: HoverContext;
 
 	constructor(
 		editor: ICodeEditor,
@@ -80,6 +91,11 @@ class ModesContentComputer implements IHoverComputer<HoverPart[]> {
 
 	setRange(range: Range): void {
 		this._range = range;
+		this._result = [];
+	}
+
+	setContext(context: HoverContext) {
+		this._context = context;
 		this._result = [];
 	}
 
@@ -101,7 +117,7 @@ class ModesContentComputer implements IHoverComputer<HoverPart[]> {
 		return getHover(model, new Position(
 			this._range.startLineNumber,
 			this._range.startColumn
-		), token);
+		), token, this._context);
 	}
 
 	computeSync(): HoverPart[] {
@@ -200,6 +216,7 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 
 	private _messages: HoverPart[];
 	private _lastRange: Range | null;
+	private _lastKeyModifiers: Set<KeyMod> = new Set();
 	private readonly _computer: ModesContentComputer;
 	private readonly _hoverOperation: HoverOperation<HoverPart[]>;
 	private _highlightDecorations: string[];
@@ -278,9 +295,10 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 		}
 	}
 
-	startShowingAt(range: Range, mode: HoverStartMode, focus: boolean): void {
-		if (this._lastRange && this._lastRange.equalsRange(range)) {
-			// We have to show the widget at the exact same range as before, so no work is needed
+	startShowingAt(range: Range, mode: HoverStartMode, focus: boolean, source: HoverSource, keyModifiers?: Set<KeyMod>): void {
+		if (this._lastRange && this._lastRange.equalsRange(range) && keyModifiers &&
+			this._lastKeyModifiers.size === keyModifiers.size && [...this._lastKeyModifiers].every(value => keyModifiers.has(value))) {
+			// We have to show the widget at the exact same range with the same modifiers as before, so no work is needed
 			return;
 		}
 
@@ -313,9 +331,35 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 		}
 
 		this._lastRange = range;
+		if (keyModifiers) {
+			this._lastKeyModifiers = keyModifiers;
+		} else {
+			this._lastKeyModifiers.clear();
+		}
 		this._computer.setRange(range);
+		this._computer.setContext({
+			keyModifiers: [...this._lastKeyModifiers],
+			source: source
+		});
 		this._shouldFocus = focus;
 		this._hoverOperation.start(mode);
+	}
+
+	update(range: Range, mode: HoverStartMode, focus: boolean, source: HoverSource, keyModifiers: Set<KeyMod>): void {
+		this._hoverOperation.cancel();
+
+		if (this.isVisible) {
+			this.hide();
+			this._lastRange = range;
+			this._lastKeyModifiers = keyModifiers;
+			this._computer.setRange(range);
+			this._computer.setContext({
+				keyModifiers: [...keyModifiers],
+				source: source
+			});
+			this._shouldFocus = focus;
+			this._hoverOperation.start(mode);
+		}
 	}
 
 	hide(): void {

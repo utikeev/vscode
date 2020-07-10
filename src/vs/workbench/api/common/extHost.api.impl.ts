@@ -1030,6 +1030,7 @@ export function createApiFactoryAndRegisterActors(accessor: ServicesAccessor): I
 			FoldingRangeKind: extHostTypes.FoldingRangeKind,
 			FunctionBreakpoint: extHostTypes.FunctionBreakpoint,
 			Hover: extHostTypes.Hover,
+			HoverSource: extHostTypes.HoverSource,
 			IndentAction: languageConfiguration.IndentAction,
 			Location: extHostTypes.Location,
 			LogLevel: extHostTypes.LogLevel,

@@ -6,10 +6,10 @@
 import * as nls from 'vs/nls';
 import { IKeyboardEvent } from 'vs/base/browser/keyboardEvent';
 import { KeyChord, KeyCode, KeyMod } from 'vs/base/common/keyCodes';
-import { IDisposable, DisposableStore, MutableDisposable } from 'vs/base/common/lifecycle';
+import { DisposableStore, IDisposable, MutableDisposable } from 'vs/base/common/lifecycle';
 import { IEmptyContentData } from 'vs/editor/browser/controller/mouseTarget';
 import { ICodeEditor, IEditorMouseEvent, MouseTargetType } from 'vs/editor/browser/editorBrowser';
-import { EditorAction, ServicesAccessor, registerEditorAction, registerEditorContribution } from 'vs/editor/browser/editorExtensions';
+import { EditorAction, registerEditorAction, registerEditorContribution, ServicesAccessor } from 'vs/editor/browser/editorExtensions';
 import { ConfigurationChangedEvent, EditorOption } from 'vs/editor/common/config/editorOptions';
 import { Range } from 'vs/editor/common/core/range';
 import { IEditorContribution, IScrollEvent } from 'vs/editor/common/editorCommon';
@@ -20,13 +20,22 @@ import { ModesContentHoverWidget } from 'vs/editor/contrib/hover/modesContentHov
 import { ModesGlyphHoverWidget } from 'vs/editor/contrib/hover/modesGlyphHover';
 import { KeybindingWeight } from 'vs/platform/keybinding/common/keybindingsRegistry';
 import { IOpenerService } from 'vs/platform/opener/common/opener';
-import { editorHoverBackground, editorHoverBorder, editorHoverHighlight, textCodeBlockBackground, textLinkForeground, editorHoverStatusBarBackground, editorHoverForeground } from 'vs/platform/theme/common/colorRegistry';
+import {
+	editorHoverBackground,
+	editorHoverBorder,
+	editorHoverForeground,
+	editorHoverHighlight,
+	editorHoverStatusBarBackground,
+	textCodeBlockBackground,
+	textLinkForeground
+} from 'vs/platform/theme/common/colorRegistry';
 import { IThemeService, registerThemingParticipant } from 'vs/platform/theme/common/themeService';
 import { IMarkerDecorationsService } from 'vs/editor/common/services/markersDecorationService';
 import { IKeybindingService } from 'vs/platform/keybinding/common/keybinding';
 import { AccessibilitySupport } from 'vs/platform/accessibility/common/accessibility';
 import { GotoDefinitionAtPositionEditorContribution } from 'vs/editor/contrib/gotoSymbol/link/goToDefinitionAtPosition';
-import { IContextKeyService, IContextKey } from 'vs/platform/contextkey/common/contextkey';
+import { IContextKey, IContextKeyService } from 'vs/platform/contextkey/common/contextkey';
+import { HoverSource } from 'vs/editor/common/modes';
 
 export class ModesHoverController implements IEditorContribution {
 
@@ -56,6 +65,8 @@ export class ModesHoverController implements IEditorContribution {
 	private _hoverClicked: boolean;
 	private _isHoverEnabled!: boolean;
 	private _isHoverSticky!: boolean;
+	private _currentModifiers: Set<KeyMod> = new Set<KeyMod>();
+	private _lastRange?: Range;
 
 	private _hoverVisibleKey: IContextKey<boolean>;
 
@@ -98,6 +109,7 @@ export class ModesHoverController implements IEditorContribution {
 			this._toUnhook.add(this._editor.onMouseUp((e: IEditorMouseEvent) => this._onEditorMouseUp(e)));
 			this._toUnhook.add(this._editor.onMouseMove((e: IEditorMouseEvent) => this._onEditorMouseMove(e)));
 			this._toUnhook.add(this._editor.onKeyDown((e: IKeyboardEvent) => this._onKeyDown(e)));
+			this._toUnhook.add(this._editor.onKeyUp((e: IKeyboardEvent) => this._onKeyUp(e)));
 			this._toUnhook.add(this._editor.onDidChangeModelDecorations(() => this._onModelDecorationsChanged()));
 		} else {
 			this._toUnhook.add(this._editor.onMouseMove(hideWidgetsEventHandler));
@@ -180,7 +192,8 @@ export class ModesHoverController implements IEditorContribution {
 			this.glyphWidget.hide();
 
 			if (this._isHoverEnabled && mouseEvent.target.range) {
-				this.contentWidget.startShowingAt(mouseEvent.target.range, HoverStartMode.Delayed, false);
+				this._lastRange = mouseEvent.target.range;
+				this.contentWidget.startShowingAt(mouseEvent.target.range, HoverStartMode.Delayed, false, HoverSource.Mouse, this._currentModifiers);
 			}
 		} else if (targetType === MouseTargetType.GUTTER_GLYPH_MARGIN) {
 			this.contentWidget.hide();
@@ -194,9 +207,22 @@ export class ModesHoverController implements IEditorContribution {
 	}
 
 	private _onKeyDown(e: IKeyboardEvent): void {
-		if (e.keyCode !== KeyCode.Ctrl && e.keyCode !== KeyCode.Alt && e.keyCode !== KeyCode.Meta && e.keyCode !== KeyCode.Shift) {
+		if (!e.toKeybinding().isModifierKey()) {
 			// Do not hide hover when a modifier key is pressed
 			this._hideWidgets();
+		} else {
+			e.getKeyMods().forEach(value => this._currentModifiers.add(value));
+			if (this._lastRange) {
+				this.contentWidget.update(this._lastRange, HoverStartMode.Delayed, false, HoverSource.Mouse, this._currentModifiers);
+			}
+		}
+	}
+
+	private _onKeyUp(e: IKeyboardEvent): void {
+		const unpressed = e.getKeyMods();
+		unpressed.forEach(value => this._currentModifiers.delete(value));
+		if (this._lastRange) {
+			this.contentWidget.update(this._lastRange, HoverStartMode.Delayed, false, HoverSource.Mouse, this._currentModifiers);
 		}
 	}
 
@@ -215,7 +241,7 @@ export class ModesHoverController implements IEditorContribution {
 	}
 
 	public showContentHover(range: Range, mode: HoverStartMode, focus: boolean): void {
-		this.contentWidget.startShowingAt(range, mode, focus);
+		this.contentWidget.startShowingAt(range, mode, focus, HoverSource.Action);
 	}
 
 	public dispose(): void {

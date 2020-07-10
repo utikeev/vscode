@@ -2781,3 +2781,8 @@ export enum StandardTokenType {
 	String = 2,
 	RegEx = 4
 }
+
+export enum HoverSource {
+	Mouse = 1,
+	Action = 2
+}

@@ -19,7 +19,8 @@ import { LanguageFeatureRegistry } from 'vs/editor/common/modes/languageFeatureR
 import { TokenizationRegistryImpl } from 'vs/editor/common/modes/tokenizationRegistry';
 import { ExtensionIdentifier } from 'vs/platform/extensions/common/extensions';
 import { IMarkerData } from 'vs/platform/markers/common/markers';
-import { iconRegistry, Codicon } from 'vs/base/common/codicons';
+import { Codicon, iconRegistry } from 'vs/base/common/codicons';
+import { KeyMod } from 'vs/base/common/keyCodes';
 
 /**
  * Open ended enum at runtime
@@ -253,6 +254,26 @@ export interface Hover {
 	range?: IRange;
 }
 
+export enum HoverSource {
+	Mouse = 1,
+	Action = 2
+}
+
+/**
+ * Context for hovering operation.
+ */
+export interface HoverContext {
+	/**
+	 * Modifier the hover was invoked with.
+	 */
+	keyModifiers: KeyMod[];
+
+	/**
+	 * The source of invoking hover.
+	 */
+	source: HoverSource;
+}
+
 /**
  * The hover provider interface defines the contract between extensions and
  * the [hover](https://code.visualstudio.com/docs/editor/intellisense)-feature.
@@ -263,7 +284,7 @@ export interface HoverProvider {
 	 * position will be merged by the editor. A hover can have a range which defaults
 	 * to the word range at the position when omitted.
 	 */
-	provideHover(model: model.ITextModel, position: Position, token: CancellationToken): ProviderResult<Hover>;
+	provideHover(model: model.ITextModel, position: Position, token: CancellationToken, context: HoverContext): ProviderResult<Hover>;
 }
 
 /**

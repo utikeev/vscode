@@ -320,6 +320,11 @@ export enum EndOfLineSequence {
 	CRLF = 1
 }
 
+export enum HoverSource {
+	Mouse = 1,
+	Action = 2
+}
+
 /**
  * Describes what to do with the indentation when pressing Enter.
  */
