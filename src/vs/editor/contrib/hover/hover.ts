@@ -65,8 +65,6 @@ export class ModesHoverController implements IEditorContribution {
 	private _hoverClicked: boolean;
 	private _isHoverEnabled!: boolean;
 	private _isHoverSticky!: boolean;
-	private _currentModifiers: Set<KeyMod> = new Set<KeyMod>();
-	private _lastRange?: Range;
 
 	private _hoverVisibleKey: IContextKey<boolean>;
 
@@ -109,7 +107,6 @@ export class ModesHoverController implements IEditorContribution {
 			this._toUnhook.add(this._editor.onMouseUp((e: IEditorMouseEvent) => this._onEditorMouseUp(e)));
 			this._toUnhook.add(this._editor.onMouseMove((e: IEditorMouseEvent) => this._onEditorMouseMove(e)));
 			this._toUnhook.add(this._editor.onKeyDown((e: IKeyboardEvent) => this._onKeyDown(e)));
-			this._toUnhook.add(this._editor.onKeyUp((e: IKeyboardEvent) => this._onKeyUp(e)));
 			this._toUnhook.add(this._editor.onDidChangeModelDecorations(() => this._onModelDecorationsChanged()));
 		} else {
 			this._toUnhook.add(this._editor.onMouseMove(hideWidgetsEventHandler));
@@ -192,8 +189,8 @@ export class ModesHoverController implements IEditorContribution {
 			this.glyphWidget.hide();
 
 			if (this._isHoverEnabled && mouseEvent.target.range) {
-				this._lastRange = mouseEvent.target.range;
-				this.contentWidget.startShowingAt(mouseEvent.target.range, HoverStartMode.Delayed, false, HoverSource.Mouse, this._currentModifiers);
+				const modifiers = ModesHoverController.getModifiers(mouseEvent);
+				this.contentWidget.startShowingAt(mouseEvent.target.range, HoverStartMode.Delayed, false, HoverSource.Mouse, modifiers);
 			}
 		} else if (targetType === MouseTargetType.GUTTER_GLYPH_MARGIN) {
 			this.contentWidget.hide();
@@ -206,23 +203,28 @@ export class ModesHoverController implements IEditorContribution {
 		}
 	}
 
+	private static getModifiers(e: IEditorMouseEvent): KeyMod[] {
+		const modifiers: KeyMod[] = [];
+		const mouseEvent = e.event;
+		if (mouseEvent.altKey) {
+			modifiers.push(KeyMod.Alt);
+		}
+		if (mouseEvent.ctrlKey) {
+			modifiers.push(KeyMod.WinCtrl);
+		}
+		if (mouseEvent.metaKey) {
+			modifiers.push(KeyMod.CtrlCmd);
+		}
+		if (mouseEvent.shiftKey) {
+			modifiers.push(KeyMod.Shift);
+		}
+		return modifiers;
+	}
+
 	private _onKeyDown(e: IKeyboardEvent): void {
 		if (!e.toKeybinding().isModifierKey()) {
 			// Do not hide hover when a modifier key is pressed
 			this._hideWidgets();
-		} else {
-			e.getKeyMods().forEach(value => this._currentModifiers.add(value));
-			if (this._lastRange) {
-				this.contentWidget.update(this._lastRange, HoverStartMode.Delayed, false, HoverSource.Mouse, this._currentModifiers);
-			}
-		}
-	}
-
-	private _onKeyUp(e: IKeyboardEvent): void {
-		const unpressed = e.getKeyMods();
-		unpressed.forEach(value => this._currentModifiers.delete(value));
-		if (this._lastRange) {
-			this.contentWidget.update(this._lastRange, HoverStartMode.Delayed, false, HoverSource.Mouse, this._currentModifiers);
 		}
 	}
 

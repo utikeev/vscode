@@ -32,7 +32,7 @@ import { HoverOperation, HoverStartMode, IHoverComputer } from 'vs/editor/contri
 import { ContentHoverWidget } from 'vs/editor/contrib/hover/hoverWidgets';
 import { MarkdownRenderer } from 'vs/editor/contrib/markdown/markdownRenderer';
 import { IThemeService, registerThemingParticipant } from 'vs/platform/theme/common/themeService';
-import { asArray, coalesce, isNonEmptyArray } from 'vs/base/common/arrays';
+import { asArray, coalesce, isNonEmptyArray, equals as equalArray } from 'vs/base/common/arrays';
 import { IMarker, IMarkerData, MarkerSeverity } from 'vs/platform/markers/common/markers';
 import { basename } from 'vs/base/common/resources';
 import { IMarkerDecorationsService } from 'vs/editor/common/services/markersDecorationService';
@@ -216,7 +216,7 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 
 	private _messages: HoverPart[];
 	private _lastRange: Range | null;
-	private _lastKeyModifiers: Set<KeyMod> = new Set();
+	private _lastKeyModifiers: KeyMod[] = [];
 	private readonly _computer: ModesContentComputer;
 	private readonly _hoverOperation: HoverOperation<HoverPart[]>;
 	private _highlightDecorations: string[];
@@ -295,9 +295,9 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 		}
 	}
 
-	startShowingAt(range: Range, mode: HoverStartMode, focus: boolean, source: HoverSource, keyModifiers?: Set<KeyMod>): void {
-		if (this._lastRange && this._lastRange.equalsRange(range) && keyModifiers &&
-			this._lastKeyModifiers.size === keyModifiers.size && [...this._lastKeyModifiers].every(value => keyModifiers.has(value))) {
+	startShowingAt(range: Range, mode: HoverStartMode, focus: boolean, source: HoverSource, keyModifiers: KeyMod[] = []): void {
+		const keyModifiersSame = equalArray(this._lastKeyModifiers, keyModifiers);
+		if (this._lastRange && this._lastRange.equalsRange(range) && keyModifiersSame) {
 			// We have to show the widget at the exact same range with the same modifiers as before, so no work is needed
 			return;
 		}
@@ -319,7 +319,7 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 						filteredMessages.push(msg);
 					}
 				}
-				if (filteredMessages.length > 0) {
+				if (filteredMessages.length > 0 && keyModifiersSame) {
 					if (hoverContentsEquals(filteredMessages, this._messages)) {
 						return;
 					}
@@ -331,35 +331,14 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 		}
 
 		this._lastRange = range;
-		if (keyModifiers) {
-			this._lastKeyModifiers = keyModifiers;
-		} else {
-			this._lastKeyModifiers.clear();
-		}
+		this._lastKeyModifiers = keyModifiers;
 		this._computer.setRange(range);
 		this._computer.setContext({
-			keyModifiers: [...this._lastKeyModifiers],
+			keyModifiers: keyModifiers,
 			source: source
 		});
 		this._shouldFocus = focus;
 		this._hoverOperation.start(mode);
-	}
-
-	update(range: Range, mode: HoverStartMode, focus: boolean, source: HoverSource, keyModifiers: Set<KeyMod>): void {
-		this._hoverOperation.cancel();
-
-		if (this.isVisible) {
-			this.hide();
-			this._lastRange = range;
-			this._lastKeyModifiers = keyModifiers;
-			this._computer.setRange(range);
-			this._computer.setContext({
-				keyModifiers: [...keyModifiers],
-				source: source
-			});
-			this._shouldFocus = focus;
-			this._hoverOperation.start(mode);
-		}
 	}
 
 	hide(): void {
