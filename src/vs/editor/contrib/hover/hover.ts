@@ -55,6 +55,7 @@ export class ModesHoverController implements IEditorContribution {
 	get contentWidget(): ModesContentHoverWidget {
 		if (!this._contentWidget.value) {
 			this._createHoverWidgets();
+			this.addAdditionalDecorations([]);
 		}
 		return this._contentWidget.value!;
 	}
