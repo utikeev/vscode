@@ -52,6 +52,7 @@ import { textLinkForeground } from 'vs/platform/theme/common/colorRegistry';
 import { Progress } from 'vs/platform/progress/common/progress';
 import { IContextKey } from 'vs/platform/contextkey/common/contextkey';
 import { KeyMod } from 'vs/base/common/keyCodes';
+import { Emitter, Event } from 'vs/base/common/event';
 
 const $ = dom.$;
 
@@ -217,6 +218,7 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 	private _messages: HoverPart[];
 	private _lastRange: Range | null;
 	private _lastKeyModifiers: KeyMod[] = [];
+	private _sticky: boolean = false;
 	private readonly _computer: ModesContentComputer;
 	private readonly _hoverOperation: HoverOperation<HoverPart[]>;
 	private _highlightDecorations: string[];
@@ -227,6 +229,9 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 	private _codeLink?: HTMLElement;
 
 	private readonly renderDisposable = this._register(new MutableDisposable<IDisposable>());
+
+	private _onBlur = this._register(new Emitter<void>());
+	readonly onBlur: Event<void> = this._onBlur.event;
 
 	constructor(
 		editor: ICodeEditor,
@@ -255,14 +260,29 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 			this._editor.getOption(EditorOption.hover).delay
 		);
 
-		this._register(dom.addStandardDisposableListener(this.getDomNode(), dom.EventType.FOCUS, () => {
+		const checkBlur = (oldEvent: FocusEvent) => {
+			const activeElement = oldEvent.relatedTarget;
+			if (activeElement && activeElement instanceof HTMLElement && this.getDomNode().contains(activeElement)) {
+				const blurDisposable = this.onblur(activeElement, (newEvent: FocusEvent) => {
+					blurDisposable.dispose();
+					checkBlur(newEvent);
+				});
+				return;
+			}
+			this._onBlur.fire();
+		};
+
+		this.onfocus(this.getDomNode(), () => {
 			if (this._colorPicker) {
 				dom.addClass(this.getDomNode(), 'colorpicker-hover');
 			}
-		}));
-		this._register(dom.addStandardDisposableListener(this.getDomNode(), dom.EventType.BLUR, () => {
+		});
+		this.onblur(this.getDomNode(), (e: FocusEvent) => {
 			dom.removeClass(this.getDomNode(), 'colorpicker-hover');
-		}));
+			if (this._sticky) {
+				checkBlur(e);
+			}
+		});
 		this._register(editor.onDidChangeConfiguration((e) => {
 			this._hoverOperation.setHoverTime(this._editor.getOption(EditorOption.hover).delay);
 		}));
@@ -295,9 +315,9 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 		}
 	}
 
-	startShowingAt(range: Range, mode: HoverStartMode, focus: boolean, source: HoverSource, keyModifiers: KeyMod[] = []): void {
+	startShowingAt(range: Range, mode: HoverStartMode, focus: boolean, source: HoverSource, keyModifiers: KeyMod[], sticky?: boolean): void {
 		const keyModifiersSame = equalArray(this._lastKeyModifiers, keyModifiers);
-		if (this._lastRange && this._lastRange.equalsRange(range) && keyModifiersSame) {
+		if (this._lastRange && this._lastRange.equalsRange(range) && keyModifiersSame && this._sticky === !!sticky) {
 			// We have to show the widget at the exact same range with the same modifiers as before, so no work is needed
 			return;
 		}
@@ -332,6 +352,7 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 
 		this._lastRange = range;
 		this._lastKeyModifiers = keyModifiers;
+		this._sticky = !!sticky;
 		this._computer.setRange(range);
 		this._computer.setContext({
 			keyModifiers: keyModifiers,
