@@ -69,6 +69,7 @@ export class ModesHoverController implements IEditorContribution {
 	private _hoverClicked: boolean;
 	private _isHoverEnabled!: boolean;
 	private _isHoverSticky!: boolean;
+	private _isCurrentSticky: boolean = false;
 
 	private _hoverVisibleKey: IContextKey<boolean>;
 
@@ -101,7 +102,11 @@ export class ModesHoverController implements IEditorContribution {
 	}
 
 	private _hookEvents(): void {
-		const hideWidgetsEventHandler = () => this._hideWidgets();
+		const hideWidgetsEventHandler = () => {
+			if (!this._isCurrentSticky) {
+				this._hideWidgets();
+			}
+		};
 
 		const hoverOpts = this._editor.getOption(EditorOption.hover);
 		this._isHoverEnabled = hoverOpts.enabled;
@@ -180,6 +185,10 @@ export class ModesHoverController implements IEditorContribution {
 			return;
 		}
 
+		if (this._isCurrentSticky) {
+			return;
+		}
+
 		if (targetType === MouseTargetType.CONTENT_EMPTY) {
 			const epsilon = this._editor.getOption(EditorOption.fontInfo).typicalHalfwidthCharacterWidth / 2;
 			const data = <IEmptyContentData>mouseEvent.target.detail;
@@ -226,6 +235,10 @@ export class ModesHoverController implements IEditorContribution {
 	}
 
 	private _onKeyDown(e: IKeyboardEvent): void {
+		if (this._isCurrentSticky && e.keyCode !== KeyCode.Escape) {
+			return;
+		}
+
 		if (!e.toKeybinding().isModifierKey()) {
 			// Do not hide hover when a modifier key is pressed
 			this._hideWidgets();
@@ -237,6 +250,7 @@ export class ModesHoverController implements IEditorContribution {
 			return;
 		}
 
+		this._isCurrentSticky = false;
 		this._glyphWidget.value.hide();
 		this._contentWidget.value.hide();
 	}
@@ -246,7 +260,8 @@ export class ModesHoverController implements IEditorContribution {
 		this._glyphWidget.value = new ModesGlyphHoverWidget(this._editor, this._modeService, this._openerService);
 	}
 
-	public showContentHover(range: Range, mode: HoverStartMode, focus: boolean): void {
+	public showContentHover(range: Range, mode: HoverStartMode, focus: boolean, sticky?: boolean): void {
+		this._isCurrentSticky = !!sticky;
 		this.contentWidget.startShowingAt(range, mode, focus, HoverSource.Action);
 	}
 
@@ -281,7 +296,7 @@ class ShowHoverAction extends EditorAction {
 		});
 	}
 
-	public run(accessor: ServicesAccessor, editor: ICodeEditor, args: { position?: IPosition, uri?: string }): void {
+	public run(accessor: ServicesAccessor, editor: ICodeEditor, args: { position?: IPosition, uri?: string, sticky?: boolean }): void {
 		if (!editor.hasModel()) {
 			return;
 		}
@@ -303,10 +318,10 @@ class ShowHoverAction extends EditorAction {
 		if (!controller) {
 			return;
 		}
-		const position = args.position ? args.position : finalEditor.getPosition();
+		const position = args.position || finalEditor.getPosition();
 		const range = new Range(position.lineNumber, position.column, position.lineNumber, position.column);
-		const focus = finalEditor.getOption(EditorOption.accessibilitySupport) === AccessibilitySupport.Enabled;
-		controller.showContentHover(range, HoverStartMode.Immediate, focus);
+		const focus = args.sticky || finalEditor.getOption(EditorOption.accessibilitySupport) === AccessibilitySupport.Enabled;
+		controller.showContentHover(range, HoverStartMode.Immediate, focus, args.sticky);
 	}
 }
 
