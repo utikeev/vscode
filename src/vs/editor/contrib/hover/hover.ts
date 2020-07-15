@@ -40,6 +40,7 @@ import { HoverSource } from 'vs/editor/common/modes';
 import { URI } from 'vs/base/common/uri';
 import { ICodeEditorService } from 'vs/editor/browser/services/codeEditorService';
 import { IModelService } from 'vs/editor/common/services/modelService';
+import { IModelDeltaDecoration } from 'vs/editor/common/model';
 
 export class ModesHoverController implements IEditorContribution {
 
@@ -269,6 +270,10 @@ export class ModesHoverController implements IEditorContribution {
 	public showContentHover(range: Range, mode: HoverStartMode, focus: boolean, sticky?: boolean): void {
 		this._isCurrentSticky = !!sticky;
 		this.contentWidget.startShowingAt(range, mode, focus, HoverSource.Action, [], this._isCurrentSticky);
+	}
+
+	public addAdditionalDecorations(decorations: IModelDeltaDecoration[]) {
+		this.contentWidget.addAdditionalDecorations(decorations);
 	}
 
 	public dispose(): void {
