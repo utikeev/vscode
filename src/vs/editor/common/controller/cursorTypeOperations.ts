@@ -439,7 +439,7 @@ export class TypeOperations {
 			return false;
 		}
 
-		if (!config.autoClosingPairsClose2.has(ch)) {
+		if (!config.overtypeAllowed && !config.autoClosingPairsClose2.has(ch)) {
 			return false;
 		}
 
@@ -470,7 +470,7 @@ export class TypeOperations {
 				let found = false;
 				for (let j = 0, lenJ = autoClosedCharacters.length; j < lenJ; j++) {
 					const autoClosedCharacter = autoClosedCharacters[j];
-					if (position.lineNumber === autoClosedCharacter.startLineNumber && position.column === autoClosedCharacter.startColumn) {
+					if (autoClosedCharacter.containsPosition(position)) {
 						found = true;
 						break;
 					}
