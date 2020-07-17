@@ -123,7 +123,11 @@ export class ModesHoverController implements IEditorContribution {
 			this._toUnhook.add(this._editor.onMouseMove(hideWidgetsEventHandler));
 		}
 
-		this._toUnhook.add(this._editor.onMouseLeave(hideWidgetsEventHandler));
+		this._toUnhook.add(this._editor.onMouseLeave(() => {
+			if (!this.contentWidget.isResizing) {
+				hideWidgetsEventHandler();
+			}
+		}));
 		this._toUnhook.add(this._editor.onDidChangeModel(hideWidgetsEventHandler));
 		this._toUnhook.add(this._editor.onDidScrollChange((e: IScrollEvent) => this._onEditorScrollChanged(e)));
 	}
@@ -172,6 +176,10 @@ export class ModesHoverController implements IEditorContribution {
 
 	private _onEditorMouseMove(mouseEvent: IEditorMouseEvent): void {
 		let targetType = mouseEvent.target.type;
+
+		if (this.contentWidget.isResizing) {
+			return;
+		}
 
 		if (this._isMouseDown && this._hoverClicked && this.contentWidget.isColorPickerVisible()) {
 			return;

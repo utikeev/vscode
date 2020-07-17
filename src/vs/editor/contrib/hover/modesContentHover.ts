@@ -296,6 +296,10 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 		}));
 	}
 
+	get isResizing(): boolean {
+		return this._hover.resizable.isResizing;
+	}
+
 	dispose(): void {
 		this._hoverOperation.cancel();
 		super.dispose();
@@ -355,6 +359,9 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 		this._lastRange = range;
 		this._lastKeyModifiers = keyModifiers;
 		this._sticky = !!sticky;
+		if (this._sticky) {
+			this._hover.resizable.restoreResize();
+		}
 		this._computer.setRange(range);
 		this._computer.setContext({
 			keyModifiers: keyModifiers,
@@ -367,6 +374,9 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 	hide(): void {
 		this._lastRange = null;
 		this._hoverOperation.cancel();
+		if (this.isVisible && this._sticky) {
+			this._hover.resizable.saveResize();
+		}
 		super.hide();
 		this._isChangingDecorations = true;
 		this._currentDecorations = [];

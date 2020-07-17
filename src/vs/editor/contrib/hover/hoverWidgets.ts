@@ -115,6 +115,7 @@ export class ContentHoverWidget extends Widget implements IContentWidget {
 		if (this._stoleFocus) {
 			this._editor.focus();
 		}
+		this._hover.resizable.clearResize();
 	}
 
 	public getPosition(): IContentWidgetPosition | null {
@@ -158,12 +159,13 @@ export class ContentHoverWidget extends Widget implements IContentWidget {
 
 	private layout(): void {
 		const height = Math.max(this._editor.getLayoutInfo().height / 4, 250);
+		const width = Math.max(this._editor.getLayoutInfo().width * 0.66, 500);
 		const { fontSize, lineHeight } = this._editor.getOption(EditorOption.fontInfo);
 
 		this._hover.contentsDomNode.style.fontSize = `${fontSize}px`;
 		this._hover.contentsDomNode.style.lineHeight = `${lineHeight}px`;
 		this._hover.contentsDomNode.style.maxHeight = `${height}px`;
-		this._hover.contentsDomNode.style.maxWidth = `${Math.max(this._editor.getLayoutInfo().width * 0.66, 500)}px`;
+		this._hover.contentsDomNode.style.maxWidth = `${width}px`;
 	}
 }
 
