@@ -521,6 +521,8 @@ export class SuggestWidget implements IContentWidget, IListVirtualDelegate<Compl
 	private docsPositionPreviousWidgetY: number | null = null;
 	private explainMode: boolean = false;
 
+	private _isUserAware: boolean = false;
+
 	private readonly _onDetailsKeydown = new Emitter<IKeyboardEvent>();
 	public readonly onDetailsKeyDown: Event<IKeyboardEvent> = this._onDetailsKeydown.event;
 
@@ -770,6 +772,10 @@ export class SuggestWidget implements IContentWidget, IListVirtualDelegate<Compl
 				this.currentSuggestionDetails = null;
 			}
 
+			if (this.focusedItem) {
+				this._isUserAware = true;
+			}
+
 			this.focusedItem = item;
 
 			this.list.reveal(index);
@@ -831,6 +837,7 @@ export class SuggestWidget implements IContentWidget, IListVirtualDelegate<Compl
 					this.list.splice(0, this.list.length);
 				}
 				this.focusedItem = null;
+				this._isUserAware = false;
 				break;
 			case State.Loading:
 				this.messageElement.textContent = SuggestWidget.LOADING_MESSAGE;
@@ -875,6 +882,7 @@ export class SuggestWidget implements IContentWidget, IListVirtualDelegate<Compl
 
 		if (!this.isAuto) {
 			this.loadingTimeout = disposableTimeout(() => this.setState(State.Loading), delay);
+			this._isUserAware = true;
 		}
 	}
 
@@ -1173,6 +1181,10 @@ export class SuggestWidget implements IContentWidget, IListVirtualDelegate<Compl
 
 	isFrozen(): boolean {
 		return this.state === State.Frozen;
+	}
+
+	isUserAware(): boolean {
+		return this._isUserAware;
 	}
 
 	private updateListHeight(): number {
