@@ -13,6 +13,7 @@ export interface IMarkdownString {
 	readonly supportThemeIcons?: boolean;
 	uris?: { [href: string]: UriComponents };
 	readonly sanitized?: boolean;
+	readonly rendered?: boolean;
 }
 
 export class MarkdownString implements IMarkdownString {

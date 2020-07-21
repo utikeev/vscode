@@ -34,6 +34,35 @@ export interface MarkdownRenderOptions extends FormattedTextRenderOptions {
 export function renderMarkdown(markdown: IMarkdownString, options: MarkdownRenderOptions = {}, markedOptions: MarkedOptions = {}): HTMLElement {
 	const element = createElement(options);
 
+	const actionHandler = options.actionHandler;
+	if (actionHandler) {
+		actionHandler.disposeables.add(DOM.addStandardDisposableListener(element, 'click', event => {
+			let target: HTMLElement | null = event.target;
+			if (target.tagName !== 'A') {
+				target = target.parentElement;
+				if (!target || target.tagName !== 'A') {
+					return;
+				}
+			}
+			try {
+				const href = target.dataset['href'];
+				if (href) {
+					actionHandler.callback(href, event);
+				}
+			} catch (err) {
+				onUnexpectedError(err);
+			} finally {
+				event.preventDefault();
+			}
+		}));
+	}
+
+	if (markdown.rendered) {
+		const value = markdown.value.replace(/<a href="(.*?)"/g, '<a href="#" data-href="$1"');
+		element.innerHTML = sanitize(markdown, value);
+		return element;
+	}
+
 	const _uriMassage = function (part: string): string {
 		let data: any;
 		try {
@@ -169,29 +198,6 @@ export function renderMarkdown(markdown: IMarkdownString, options: MarkdownRende
 		};
 	}
 
-	const actionHandler = options.actionHandler;
-	if (actionHandler) {
-		actionHandler.disposeables.add(DOM.addStandardDisposableListener(element, 'click', event => {
-			let target: HTMLElement | null = event.target;
-			if (target.tagName !== 'A') {
-				target = target.parentElement;
-				if (!target || target.tagName !== 'A') {
-					return;
-				}
-			}
-			try {
-				const href = target.dataset['href'];
-				if (href) {
-					actionHandler.callback(href, event);
-				}
-			} catch (err) {
-				onUnexpectedError(err);
-			} finally {
-				event.preventDefault();
-			}
-		}));
-	}
-
 	// Use our own sanitizer so that we can let through only spans.
 	// Otherwise, we'd be letting all html be rendered.
 	// If we want to allow markdown permitted tags, then we can delete sanitizer and sanitize.
@@ -214,6 +220,23 @@ export function renderMarkdown(markdown: IMarkdownString, options: MarkdownRende
 		markedOptions
 	);
 
+	element.innerHTML = sanitize(markdown, renderedMarkdown);
+
+	signalInnerHTML!();
+
+	return element;
+}
+
+function sanitize(markdown: IMarkdownString, rendered: string) {
+	if (markdown.sanitized) {
+		return rendered;
+	}
+
+	const allowedSchemes = [Schemas.http, Schemas.https, Schemas.mailto, Schemas.data, Schemas.file, Schemas.vscodeRemote, Schemas.vscodeRemoteResource];
+	if (markdown.isTrusted) {
+		allowedSchemes.push(Schemas.command);
+	}
+
 	function filter(token: { tag: string, attrs: { readonly [key: string]: string } }): boolean {
 		if (token.tag === 'span' && markdown.isTrusted && (Object.keys(token.attrs).length === 1)) {
 			if (token.attrs['style']) {
@@ -227,7 +250,7 @@ export function renderMarkdown(markdown: IMarkdownString, options: MarkdownRende
 		return true;
 	}
 
-	element.innerHTML = insane(renderedMarkdown, {
+	return insane(rendered, {
 		allowedSchemes,
 		// allowedTags should included everything that markdown renders to.
 		// Since we have our own sanitize function for marked, it's possible we missed some tag so let insane make sure.
@@ -245,8 +268,4 @@ export function renderMarkdown(markdown: IMarkdownString, options: MarkdownRende
 		},
 		filter
 	});
-
-	signalInnerHTML!();
-
-	return element;
 }
