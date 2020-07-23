@@ -59,7 +59,7 @@ export class ModesHoverController implements IEditorContribution {
 			const widgetValue = this._contentWidget.value!;
 			this._toUnhook.add(widgetValue.onBlur(() => this._onWidgetBlur()));
 			this._toUnhook.add(this._editor.onMouseLeave(() => {
-				if (!widgetValue.isResizing && !this._isCurrentSticky) {
+				if (!widgetValue.resizable.isResizing && !this._isCurrentSticky) {
 					this._hideWidgets();
 				}
 			}));
@@ -178,7 +178,7 @@ export class ModesHoverController implements IEditorContribution {
 	private _onEditorMouseMove(mouseEvent: IEditorMouseEvent): void {
 		let targetType = mouseEvent.target.type;
 
-		if (this.contentWidget.isResizing) {
+		if (this.contentWidget.resizable.isResizing) {
 			return;
 		}
 
