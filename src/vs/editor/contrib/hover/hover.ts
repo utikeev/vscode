@@ -56,6 +56,13 @@ export class ModesHoverController implements IEditorContribution {
 		if (!this._contentWidget.value) {
 			this._createHoverWidgets();
 			this.addAdditionalDecorations([]);
+			const widgetValue = this._contentWidget.value!;
+			this._toUnhook.add(widgetValue.onBlur(() => this._onWidgetBlur()));
+			this._toUnhook.add(this._editor.onMouseLeave(() => {
+				if (!widgetValue.isResizing && !this._isCurrentSticky) {
+					this._hideWidgets();
+				}
+			}));
 		}
 		return this._contentWidget.value!;
 	}
@@ -118,16 +125,10 @@ export class ModesHoverController implements IEditorContribution {
 			this._toUnhook.add(this._editor.onMouseMove((e: IEditorMouseEvent) => this._onEditorMouseMove(e)));
 			this._toUnhook.add(this._editor.onKeyDown((e: IKeyboardEvent) => this._onKeyDown(e)));
 			this._toUnhook.add(this._editor.onDidChangeModelDecorations(() => this._onModelDecorationsChanged()));
-			this._toUnhook.add(this.contentWidget.onBlur(() => this._onWidgetBlur()));
 		} else {
 			this._toUnhook.add(this._editor.onMouseMove(hideWidgetsEventHandler));
 		}
 
-		this._toUnhook.add(this._editor.onMouseLeave(() => {
-			if (!this.contentWidget.isResizing) {
-				hideWidgetsEventHandler();
-			}
-		}));
 		this._toUnhook.add(this._editor.onDidChangeModel(hideWidgetsEventHandler));
 		this._toUnhook.add(this._editor.onDidScrollChange((e: IScrollEvent) => this._onEditorScrollChanged(e)));
 	}
