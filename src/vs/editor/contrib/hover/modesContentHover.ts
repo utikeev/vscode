@@ -415,6 +415,8 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 		let containColorPicker = false;
 		const markdownDisposeables = new DisposableStore();
 		const markerMessages: MarkerHover[] = [];
+		const hoverMessageElements: HTMLElement[] = [];
+
 		messages.forEach((msg) => {
 			if (!msg.range) {
 				return;
@@ -523,18 +525,22 @@ export class ModesContentHoverWidget extends ContentHoverWidget {
 							}));
 							const renderedContents = markdownDisposeables.add(renderer.render(contents));
 							hoverContentsElement.appendChild(renderedContents.element);
-							fragment.appendChild(markdownHoverElement);
+							hoverMessageElements.push(markdownHoverElement);
 							isEmptyHoverContent = false;
 						});
 				}
 			}
 		});
 
+		const markerMessageElements: HTMLElement[] = [];
 		if (markerMessages.length) {
-			markerMessages.forEach(msg => fragment.appendChild(this.renderMarkerHover(msg)));
+			markerMessages.forEach(msg => markerMessageElements.push(this.renderMarkerHover(msg)));
 			const markerHoverForStatusbar = markerMessages.length === 1 ? markerMessages[0] : markerMessages.sort((a, b) => MarkerSeverity.compare(a.marker.severity, b.marker.severity))[0];
-			fragment.appendChild(this.renderMarkerStatusbar(markerHoverForStatusbar));
+			markerMessageElements.push(this.renderMarkerStatusbar(markerHoverForStatusbar));
 		}
+
+		const allMessageElements = this._editor.getOption(EditorOption.renderMarkerMessagesFirst) ? markerMessageElements.concat(hoverMessageElements) : hoverMessageElements.concat(markerMessageElements);
+		allMessageElements.forEach(el => fragment.appendChild(el));
 
 		// show
 
