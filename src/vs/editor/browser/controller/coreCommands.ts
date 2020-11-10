@@ -1827,7 +1827,7 @@ export namespace CoreEditingCommands {
 
 		public runCoreEditingCommand(editor: ICodeEditor, viewModel: IViewModel, args: any): void {
 			editor.pushUndoStop();
-			editor.executeCommands(this.id, TypeOperations.tab(viewModel.cursorConfig, viewModel.model, viewModel.getCursorStates().map(s => s.modelState.selection)));
+			editor.executeCommands(this.id, TypeOperations.tab(viewModel));
 			editor.pushUndoStop();
 		}
 	});

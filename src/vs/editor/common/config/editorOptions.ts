@@ -614,6 +614,12 @@ export interface IEditorOptions {
 	 * Defaults to false.
 	 */
 	overtypeAllowed?: boolean;
+
+	/**
+	 * Controls whether pressing Tab places cursor outside of the current autoclosed range.
+	 * Defaults to false.
+	 */
+	jumpOutOfAutoClosedOnTab?: boolean;
 }
 
 export interface IEditorConstructionOptions extends IEditorOptions {
@@ -3547,6 +3553,7 @@ export const enum EditorOption {
 	highlightActiveIndentGuide,
 	hover,
 	inDiffEditor,
+	jumpOutOfAutoCloseOnTab,
 	letterSpacing,
 	lightbulb,
 	lineDecorationsWidth,
@@ -3882,6 +3889,9 @@ export const EditorOptions = {
 	hover: register(new EditorHover()),
 	inDiffEditor: register(new EditorBooleanOption(
 		EditorOption.inDiffEditor, 'inDiffEditor', false,
+	)),
+	jumpOutOfAutoCloseOnTab: register(new EditorBooleanOption(
+		EditorOption.jumpOutOfAutoCloseOnTab, 'jumpOutOfAutoClosedOnTab', false
 	)),
 	letterSpacing: register(new EditorFloatOption(
 		EditorOption.letterSpacing, 'letterSpacing',
