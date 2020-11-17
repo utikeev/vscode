@@ -17,6 +17,7 @@ import { EditorOption } from 'vs/editor/common/config/editorOptions';
 export interface TriggerContext {
 	readonly triggerKind: modes.SignatureHelpTriggerKind;
 	readonly triggerCharacter?: string;
+	readonly auto?: boolean;
 }
 
 namespace ParameterHintState {
@@ -48,12 +49,33 @@ namespace ParameterHintState {
 export class ParameterHintsModel extends Disposable {
 
 	private static readonly DEFAULT_DELAY = 120; // ms
+	private static readonly LOADING_DELAY = 1000; // ms
+	private static readonly MISSING_SIGNATURE_HELP_RESULT: modes.SignatureHelpResult = {
+		value: {
+			signatures: [{
+				label: 'No parameter info found',
+				parameters: [],
+			}],
+			activeSignature: 0,
+			activeParameter: 0,
+		},
+		dispose: () => { },
+	};
+	private static readonly LOADING_SIGNATURE_HELP_VALUE: modes.SignatureHelp = {
+		signatures: [{
+			label: 'Loading...',
+			parameters: [],
+		}],
+		activeSignature: 0,
+		activeParameter: 0,
+	};
 
 	private readonly _onChangedHints = this._register(new Emitter<modes.SignatureHelp | undefined>());
 	public readonly onChangedHints = this._onChangedHints.event;
 
 	private readonly editor: ICodeEditor;
 	private triggerOnType = false;
+	private verbose = false;
 	private _state: ParameterHintState.State = ParameterHintState.Default;
 	private _pendingTriggers: TriggerContext[] = [];
 	private readonly _lastSignatureHelpResult = this._register(new MutableDisposable<modes.SignatureHelpResult>());
@@ -61,6 +83,7 @@ export class ParameterHintsModel extends Disposable {
 	private retriggerChars = new CharacterSet();
 
 	private readonly throttledDelayer: Delayer<boolean>;
+	private readonly showLoadingDelayer: Delayer<boolean>;
 	private triggerId = 0;
 
 	constructor(
@@ -72,6 +95,7 @@ export class ParameterHintsModel extends Disposable {
 		this.editor = editor;
 
 		this.throttledDelayer = new Delayer(delay);
+		this.showLoadingDelayer = new Delayer(ParameterHintsModel.LOADING_DELAY);
 
 		this._register(this.editor.onDidChangeConfiguration(() => this.onEditorConfigurationChange()));
 		this._register(this.editor.onDidChangeModel(e => this.onModelChanged()));
@@ -93,10 +117,13 @@ export class ParameterHintsModel extends Disposable {
 		this._state = value;
 	}
 
-	cancel(silent: boolean = false): void {
+	cancel(silent: boolean = false, cancelLoading: boolean = true): void {
 		this.state = ParameterHintState.Default;
 
 		this.throttledDelayer.cancel();
+		if (cancelLoading) {
+			this.showLoadingDelayer.cancel();
+		}
 
 		if (!silent) {
 			this._onChangedHints.fire(undefined);
@@ -116,6 +143,11 @@ export class ParameterHintsModel extends Disposable {
 			return this.doTrigger(triggerId);
 		}, delay)
 			.catch(onUnexpectedError);
+		if (this.verbose && !context.auto) {
+			this.showLoadingDelayer.trigger(() => {
+				return this.showLoadingMessage();
+			}).catch(onUnexpectedError);
+		}
 	}
 
 	public next(): void {
@@ -169,7 +201,7 @@ export class ParameterHintsModel extends Disposable {
 		const isRetrigger = this.state.type === ParameterHintState.Type.Active || this.state.type === ParameterHintState.Type.Pending;
 		const activeSignatureHelp = this.state.type === ParameterHintState.Type.Active ? this.state.hints : undefined;
 
-		this.cancel(true);
+		this.cancel(true, false);
 
 		if (this._pendingTriggers.length === 0) {
 			return false;
@@ -196,7 +228,8 @@ export class ParameterHintsModel extends Disposable {
 			provideSignatureHelp(model, position, triggerContext, token)));
 
 		try {
-			const result = await this.state.request;
+			let result = await this.state.request;
+			this.showLoadingDelayer.cancel();
 
 			// Check that we are still resolving the correct signature help
 			if (triggerId !== this.triggerId) {
@@ -205,12 +238,13 @@ export class ParameterHintsModel extends Disposable {
 				return false;
 			}
 
-			if (!result || !result.value.signatures || result.value.signatures.length === 0) {
+			if ((!result || !result.value.signatures || result.value.signatures.length === 0) && (!this.verbose || context.auto)) {
 				result?.dispose();
 				this._lastSignatureHelpResult.clear();
 				this.cancel();
 				return false;
 			} else {
+				result = result ?? ParameterHintsModel.MISSING_SIGNATURE_HELP_RESULT;
 				this.state = new ParameterHintState.Active(result.value);
 				this._lastSignatureHelpResult.value = result;
 				this._onChangedHints.fire(this.state.hints);
@@ -223,6 +257,11 @@ export class ParameterHintsModel extends Disposable {
 			onUnexpectedError(error);
 			return false;
 		}
+	}
+
+	private showLoadingMessage(): boolean {
+		this._onChangedHints.fire(ParameterHintsModel.LOADING_SIGNATURE_HELP_VALUE);
+		return true;
 	}
 
 	private get isTriggered(): boolean {
@@ -269,6 +308,7 @@ export class ParameterHintsModel extends Disposable {
 			this.trigger({
 				triggerKind: modes.SignatureHelpTriggerKind.TriggerCharacter,
 				triggerCharacter: text.charAt(lastCharIndex),
+				auto: true
 			});
 		}
 	}
@@ -289,6 +329,7 @@ export class ParameterHintsModel extends Disposable {
 
 	private onEditorConfigurationChange(): void {
 		this.triggerOnType = this.editor.getOption(EditorOption.parameterHints).enabled;
+		this.verbose = this.editor.getOption(EditorOption.parameterHints).verbose;
 
 		if (!this.triggerOnType) {
 			this.cancel();
