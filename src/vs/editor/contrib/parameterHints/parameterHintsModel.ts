@@ -143,11 +143,15 @@ export class ParameterHintsModel extends Disposable {
 			return this.doTrigger(triggerId);
 		}, delay)
 			.catch(onUnexpectedError);
-		if (this.verbose && !context.auto) {
+		if (this.shouldShowVerbose(context)) {
 			this.showLoadingDelayer.trigger(() => {
 				return this.showLoadingMessage();
 			}).catch(onUnexpectedError);
 		}
+	}
+
+	private shouldShowVerbose(context: TriggerContext): boolean {
+		return this.verbose && !context.auto && context.triggerKind === modes.SignatureHelpTriggerKind.Invoke;
 	}
 
 	public next(): void {
@@ -238,7 +242,7 @@ export class ParameterHintsModel extends Disposable {
 				return false;
 			}
 
-			if ((!result || !result.value.signatures || result.value.signatures.length === 0) && (!this.verbose || context.auto)) {
+			if ((!result || !result.value.signatures || result.value.signatures.length === 0) && !this.shouldShowVerbose(context)) {
 				result?.dispose();
 				this._lastSignatureHelpResult.clear();
 				this.cancel();
