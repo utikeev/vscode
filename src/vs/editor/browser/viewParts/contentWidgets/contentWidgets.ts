@@ -199,6 +199,7 @@ class Widget {
 	private _cachedDomNodeClientHeight: number;
 	private _maxWidth: number;
 	private _isVisible: boolean;
+	private _topPadding: number;
 
 	private _renderData: IRenderData | null;
 
@@ -219,6 +220,7 @@ class Widget {
 		this._contentWidth = layoutInfo.contentWidth;
 		this._contentLeft = layoutInfo.contentLeft;
 		this._lineHeight = options.get(EditorOption.lineHeight);
+		this._topPadding = options.get(EditorOption.contentWidgetTopPadding);
 
 		this._range = null;
 		this._viewRange = null;
@@ -238,6 +240,7 @@ class Widget {
 	public onConfigurationChanged(e: viewEvents.ViewConfigurationChangedEvent): void {
 		const options = this._context.configuration.options;
 		this._lineHeight = options.get(EditorOption.lineHeight);
+		this._topPadding = options.get(EditorOption.contentWidgetTopPadding);
 		if (e.hasChanged(EditorOption.layoutInfo)) {
 			const layoutInfo = options.get(EditorOption.layoutInfo);
 			this._contentLeft = layoutInfo.contentLeft;
@@ -356,8 +359,7 @@ class Widget {
 		const [belowLeft, absoluteBelowLeft] = this._layoutHorizontalSegmentInPage(windowSize, domNodePosition, bottomLeft.left - ctx.scrollLeft + this._contentLeft, width);
 
 		// Leave some clearance to the top/bottom
-		const options = this._context.configuration.options;
-		const TOP_PADDING = options.get(EditorOption.contentWidgetTopPadding);
+		const TOP_PADDING = this._topPadding;
 		const BOTTOM_PADDING = 22;
 
 		const fitsAbove = (absoluteAboveTop >= TOP_PADDING);
